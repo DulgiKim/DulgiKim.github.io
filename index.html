@@ -197,6 +197,112 @@
       entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
     }, { threshold: 0.12 });
     document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+    // ---------- Inline editor (shows only on local machine) ----------
+    (function () {
+      const IS_LOCAL =
+        ['localhost', '127.0.0.1', '::1', ''].includes(location.hostname) ||
+        location.protocol === 'file:';
+      if (!IS_LOCAL) return; // never shown on the public site
+
+      // Which elements can be edited in place
+      const SELECTORS = [
+        '.hero h1', '.hero .role', '.tagline',
+        '.about-card p',
+        '.skill-group h3', '.chip',
+        '.tl-item .when', '.tl-item h3', '.tl-item .org', '.tl-item li',
+        '.project-body h3', '.project-body .summary', '.project-tags .tag',
+        '.contact-card h2', '.contact-card p',
+        '.section-head h2'
+      ];
+      const editables = () => document.querySelectorAll(SELECTORS.join(','));
+      let editing = false, fileHandle = null;
+
+      // Floating toolbar
+      const bar = document.createElement('div');
+      bar.id = 'edit-toolbar';
+      bar.innerHTML =
+        '<span class="status"></span>' +
+        '<button id="ed-toggle">✏️ 편집</button>' +
+        '<button id="ed-save" class="primary" style="display:none">💾 저장</button>';
+      document.body.appendChild(bar);
+      const status = bar.querySelector('.status');
+      const btnToggle = bar.querySelector('#ed-toggle');
+      const btnSave = bar.querySelector('#ed-save');
+
+      function setEditing(on) {
+        editing = on;
+        document.body.classList.toggle('editing', on);
+        editables().forEach((el) => {
+          if (on) { el.setAttribute('contenteditable', 'true'); el.spellcheck = false; }
+          else { el.removeAttribute('contenteditable'); }
+        });
+        btnToggle.textContent = on ? '✖ 끝내기' : '✏️ 편집';
+        btnSave.style.display = on ? '' : 'none';
+        status.textContent = on ? '텍스트를 클릭해 수정 · Ctrl+S로 저장' : '';
+      }
+      btnToggle.addEventListener('click', () => setEditing(!editing));
+
+      // Don't follow links while editing
+      document.addEventListener('click', (e) => {
+        if (editing) { const a = e.target.closest('a'); if (a) e.preventDefault(); }
+      }, true);
+
+      // Serialize current DOM back to a clean HTML file
+      function cleanHTML() {
+        const clone = document.documentElement.cloneNode(true);
+        const tb = clone.querySelector('#edit-toolbar'); if (tb) tb.remove();
+        clone.querySelectorAll('.edit-toast').forEach((n) => n.remove());
+        clone.querySelectorAll('[contenteditable]').forEach((el) => {
+          el.removeAttribute('contenteditable'); el.removeAttribute('spellcheck');
+        });
+        clone.querySelectorAll('.reveal.in').forEach((el) => el.classList.remove('in'));
+        const b = clone.querySelector('body'); if (b) b.classList.remove('editing');
+        return '<!DOCTYPE html>\n' + clone.outerHTML + '\n';
+      }
+
+      function toast(msg) {
+        const t = document.createElement('div');
+        t.className = 'edit-toast'; t.textContent = msg;
+        document.body.appendChild(t);
+        requestAnimationFrame(() => t.classList.add('show'));
+        setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 250); }, 3000);
+      }
+
+      async function save() {
+        const html = cleanHTML();
+        // Preferred: write straight back to the real file (Chrome/Edge, over http/localhost)
+        if (window.showSaveFilePicker) {
+          try {
+            if (!fileHandle) {
+              fileHandle = await window.showSaveFilePicker({
+                suggestedName: 'index.html',
+                types: [{ description: 'HTML file', accept: { 'text/html': ['.html'] } }]
+              });
+            }
+            const w = await fileHandle.createWritable();
+            await w.write(html); await w.close();
+            toast('✅ 저장 완료 — commit/push 하면 사이트에 반영돼요');
+            return;
+          } catch (err) { if (err.name === 'AbortError') return; /* else fall back */ }
+        }
+        // Fallback: download the file to replace manually
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'index.html'; a.click();
+        URL.revokeObjectURL(url);
+        toast('⬇️ index.html 내려받음 — 폴더의 파일과 교체하세요');
+      }
+      btnSave.addEventListener('click', save);
+
+      // Ctrl/Cmd + S saves while editing
+      document.addEventListener('keydown', (e) => {
+        if (editing && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault(); save();
+        }
+      });
+    })();
   </script>
 </body>
 </html>
