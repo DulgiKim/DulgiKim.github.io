@@ -15,7 +15,17 @@
     '.detail-figure figcaption'
   ];
   const editables = () => document.querySelectorAll(SELECTORS.join(','));
-  let editing = false, fileHandle = null, assetsDirHandle = null, galleryEl = null;
+  let editing = false, fileHandle = null, assetsDirHandle = null, galleryEl = null, mediaAnchor = null;
+
+  // Media (gallery/video) is always inserted right after whatever was added
+  // last, starting from the 개요 image placeholder — so new blocks stack
+  // directly under it instead of jumping to the bottom of the page.
+  function getMediaAnchor() {
+    if (mediaAnchor && document.body.contains(mediaAnchor)) return mediaAnchor;
+    mediaAnchor = document.querySelector('.detail-figure') ||
+      document.querySelector('.detail-body .wrap').firstElementChild;
+    return mediaAnchor;
+  }
 
   // ---------- Toolbar ----------
   const bar = document.createElement('div');
@@ -60,10 +70,9 @@
     if (!galleryEl) {
       galleryEl = document.createElement('div');
       galleryEl.className = 'detail-gallery';
-      const firstFigure = document.querySelector('.detail-figure');
-      if (firstFigure) firstFigure.insertAdjacentElement('afterend', galleryEl);
-      else document.querySelector('.detail-body .wrap').appendChild(galleryEl);
+      getMediaAnchor().insertAdjacentElement('afterend', galleryEl);
     }
+    mediaAnchor = galleryEl;
     return galleryEl;
   }
 
@@ -189,8 +198,8 @@
     wrap.appendChild(iframe);
     addRemoveButton(wrap);
 
-    const container = document.querySelector('.detail-body .wrap');
-    container.appendChild(wrap);
+    getMediaAnchor().insertAdjacentElement('afterend', wrap);
+    mediaAnchor = wrap;
     toast('▶ 유튜브 영상 추가');
   }
   btnYt.addEventListener('click', addYouTube);
