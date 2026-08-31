@@ -180,7 +180,9 @@
     const wrap = document.createElement('div');
     wrap.className = 'video-embed';
     const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube.com/embed/${id}`;
+    const rawOrigin = location.origin && location.origin !== 'null' ? location.origin : 'https://dulgikim.github.io';
+    const origin = encodeURIComponent(rawOrigin);
+    iframe.src = `https://www.youtube.com/embed/${id}?rel=0&origin=${origin}`;
     iframe.title = 'YouTube video';
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
     iframe.allowFullscreen = true;
