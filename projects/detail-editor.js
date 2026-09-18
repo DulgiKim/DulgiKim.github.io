@@ -11,7 +11,7 @@
     '.detail-hero h1', '.detail-meta b',
     '.project-tags .tag',
     '.callout',
-    '.detail-body p', '.detail-body li',
+    '.detail-body p', '.detail-body ul',
     '.detail-figure figcaption'
   ];
   const editables = () => document.querySelectorAll(SELECTORS.join(','));
